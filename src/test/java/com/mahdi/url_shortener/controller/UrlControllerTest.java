@@ -179,4 +179,165 @@ class UrlControllerTest {
 
     verify(urlService).createShortUrl(any(CreateUrlRequest.class));
     }
+
+        @Test
+    void shouldRejectUrlWithoutProtocol() throws Exception {
+
+    String requestBody = """
+        {
+            "url": "example.com"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isBadRequest())
+    .andExpect(jsonPath("$.status").value(400))
+    .andExpect(jsonPath("$.errorCode").value(
+        "VALIDATION_ERROR"
+    ))
+    .andExpect(jsonPath("$.message").value(
+        "Invalid URL format"
+    ));
+    }
+
+        @Test
+    void shouldAcceptHttpUrl() throws Exception {
+
+    String requestBody = """
+        {
+            "url": "http://example.com"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isCreated());
+    }
+
+    @Test
+    void shouldAcceptHttpsUrl() throws Exception {
+
+    String requestBody = """
+        {
+            "url": "https://example.com"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isCreated());
+    }
+
+        @Test
+    void shouldAcceptUrlWithQueryParameters() throws Exception {
+
+    String requestBody = """
+        {
+            "url": "https://example.com/search?q=java"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isCreated());
+    }
+
+        @Test
+    void shouldAcceptUrlWithPort() throws Exception {
+
+    String requestBody = """
+        {
+            "url": "http://example.com:8080/api"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isCreated());
+    }
+
+        @Test
+    void shouldRejectFtpUrl() throws Exception {
+
+    String requestBody = """
+        {
+            "url": "ftp://example.com"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isBadRequest())
+    .andExpect(jsonPath("$.status").value(400))
+    .andExpect(jsonPath("$.errorCode").value(
+        "VALIDATION_ERROR"
+    ))
+    .andExpect(jsonPath("$.message").value(
+        "Invalid URL format"
+    ));
+    }
+
+        @Test
+    void shouldRejectUrlWithoutHost() throws Exception {
+
+    String requestBody = """
+        {
+            "url": "https://"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isBadRequest())
+    .andExpect(jsonPath("$.status").value(400))
+    .andExpect(jsonPath("$.errorCode").value(
+        "VALIDATION_ERROR"
+    ));
+    }
+
+    @Test
+    void shouldRejectUrlWithoutProtocolNewValidator() throws Exception {
+
+    String requestBody = """
+        {
+            "url": "example.com"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isBadRequest())
+    .andExpect(jsonPath("$.status").value(400))
+    .andExpect(jsonPath("$.errorCode").value(
+        "VALIDATION_ERROR"
+    ))
+    .andExpect(jsonPath("$.message").value(
+        "Invalid URL format"
+    ));
+    }
     }
