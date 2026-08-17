@@ -16,6 +16,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
 
 import java.time.OffsetDateTime;
 import java.time.Duration;
@@ -652,5 +653,73 @@ public class UrlShortenerInteneragtionTest {
     .andExpect(jsonPath("$.expiresAt").value(
         "2026-08-18T10:00:00Z"
     ));
+    }
+
+    @Test
+    void shouldRejectExpiredTimeWhenCreatingShortUrl()
+    throws Exception {
+
+    String requestBody = """
+        {
+            "url": "https://example.com",
+            "expiresAt": "2020-01-01T10:00:00Z"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isBadRequest())
+    .andExpect(jsonPath("$.status").value(400))
+    .andExpect(jsonPath("$.errorCode").value(
+        "INVALID_EXPIRATION_TIME"
+    ))
+    .andExpect(jsonPath("$.message").value(
+        "Expiration time must be in the future"
+    ));
+    }
+
+    @Test
+    void shouldCreateShortUrlWithFutureExpirationTime()
+    throws Exception {
+
+    String requestBody = """
+        {
+            "url": "https://example.com",
+            "expiresAt": "2030-01-01T10:00:00Z"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isCreated())
+    .andExpect(jsonPath("$.shortCode").exists())
+    .andExpect(jsonPath("$.shortUrl").exists());
+    }
+
+    @Test
+    void shouldCreateShortUrlWithoutExpirationTime()
+    throws Exception {
+
+    String requestBody = """
+        {
+            "url": "https://example.com"
+        }
+        """;
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody)
+    )
+    .andExpect(status().isCreated())
+    .andExpect(jsonPath("$.shortCode").exists())
+    .andExpect(jsonPath("$.shortUrl").exists())
+    .andExpect(jsonPath("$.expiresAt").doesNotExist());
     }
 }

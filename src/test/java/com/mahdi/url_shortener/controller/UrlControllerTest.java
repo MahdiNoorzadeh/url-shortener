@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -46,7 +47,8 @@ class UrlControllerTest {
                 .thenReturn(
                         new CreateUrlResponse(
                                 "abc1234",
-                                "http://localhost:8080/abc1234"
+                                "http://localhost:8080/abc1234",
+                                null
                         )
                 );
 
@@ -62,8 +64,10 @@ class UrlControllerTest {
         )
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.shortCode").value("abc1234"))
-        .andExpect(jsonPath("$.shortUrl")
-                .value("http://localhost:8080/abc1234"));
+        .andExpect(jsonPath("$.shortUrl").value(
+    "http://localhost:8080/abc1234"
+        ))
+        .andExpect(jsonPath("$.expiresAt").doesNotExist());
     }
 
     @Test
@@ -136,4 +140,43 @@ class UrlControllerTest {
 
     verify(urlService).getUrlStats("abc123");
         }
-}
+
+        @Test
+    void shouldReturnExpirationTimeWhenCreatingShortUrl()
+    throws Exception {
+
+    OffsetDateTime expiresAt =
+        OffsetDateTime.parse("2030-01-01T10:00:00Z");
+
+    CreateUrlResponse response =
+        new CreateUrlResponse(
+            "abc1234",
+            "http://localhost:8080/abc1234",
+            expiresAt
+        );
+
+    when(urlService.createShortUrl(any(CreateUrlRequest.class)))
+        .thenReturn(response);
+
+    mockMvc.perform(
+        post("/api/v1/urls")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                    "url": "https://example.com",
+                    "expiresAt": "2030-01-01T10:00:00Z"
+                }
+                """)
+    )
+    .andExpect(status().isCreated())
+    .andExpect(jsonPath("$.shortCode").value("abc1234"))
+    .andExpect(jsonPath("$.shortUrl").value(
+        "http://localhost:8080/abc1234"
+    ))
+    .andExpect(jsonPath("$.expiresAt").value(
+        "2030-01-01T10:00:00Z"
+    ));
+
+    verify(urlService).createShortUrl(any(CreateUrlRequest.class));
+    }
+    }

@@ -82,6 +82,22 @@ public class GlobalExceptionHandler {
         .status(HttpStatus.GONE)
         .body(response);
         }
+
+        @ExceptionHandler(InvalidExpirationTimeException.class)
+        public ResponseEntity<ErrorResponse> handleInvalidExpirationTime(
+        InvalidExpirationTimeException ex
+        ) {
+        ErrorResponse error = new ErrorResponse(
+        400,
+        "INVALID_EXPIRATION_TIME",
+        ex.getMessage(),
+        LocalDateTime.now()
+        );
+
+        return ResponseEntity
+        .status(HttpStatus.BAD_REQUEST)
+        .body(error);
+        }
 }
 
 

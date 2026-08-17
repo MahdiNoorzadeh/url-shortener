@@ -5,6 +5,7 @@ import com.mahdi.url_shortener.dto.CreateUrlResponse;
 import com.mahdi.url_shortener.entity.Url;
 import com.mahdi.url_shortener.exception.UrlNotFoundException;
 import com.mahdi.url_shortener.repository.UrlRepository;
+import com.mahdi.url_shortener.exception.InvalidExpirationTimeException;
 import com.mahdi.url_shortener.exception.UrlExpiredException;
 import com.mahdi.url_shortener.dto.UrlStatsResponse;
 
@@ -27,6 +28,12 @@ public class UrlService {
 
     public CreateUrlResponse createShortUrl(CreateUrlRequest request) {
 
+        if (
+        request.expiresAt() != null &&
+        !request.expiresAt().isAfter(OffsetDateTime.now())
+        ) {
+        throw new InvalidExpirationTimeException();
+        }
         String shortCode = generateUniqueShortCode();
 
         Url url = new Url();
@@ -39,8 +46,9 @@ public class UrlService {
         log.info("Short URL created successfully: shortCode={}", shortCode);
 
         return new CreateUrlResponse(
-            shortCode,
-            "http://localhost:8080/" + shortCode
+        shortCode,
+        "http://localhost:8080/" + shortCode,
+        request.expiresAt()
         );
     }
 
