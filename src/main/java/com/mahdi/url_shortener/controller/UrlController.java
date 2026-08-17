@@ -2,6 +2,7 @@ package com.mahdi.url_shortener.controller;
 
 import com.mahdi.url_shortener.dto.CreateUrlRequest;
 import com.mahdi.url_shortener.dto.CreateUrlResponse;
+import com.mahdi.url_shortener.dto.UrlStatsResponse;
 import com.mahdi.url_shortener.service.UrlService;
 import jakarta.validation.Valid;
 
@@ -27,4 +28,10 @@ public class UrlController {
         return urlService.createShortUrl(request);
     }
 
+    @GetMapping("/{shortCode}/stats")
+    public UrlStatsResponse getUrlStats(
+    @PathVariable String shortCode
+    ) {
+    return urlService.getUrlStats(shortCode);
+    }
 }

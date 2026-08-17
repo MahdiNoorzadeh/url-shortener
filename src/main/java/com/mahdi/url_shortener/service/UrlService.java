@@ -6,6 +6,7 @@ import com.mahdi.url_shortener.entity.Url;
 import com.mahdi.url_shortener.exception.UrlNotFoundException;
 import com.mahdi.url_shortener.repository.UrlRepository;
 import com.mahdi.url_shortener.exception.UrlExpiredException;
+import com.mahdi.url_shortener.dto.UrlStatsResponse;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
@@ -107,4 +108,20 @@ public class UrlService {
 
     return url.getOriginalUrl();
     }
+
+    public UrlStatsResponse getUrlStats(String shortCode) {
+
+    Url url = urlRepository.findByShortCode(shortCode)
+        .orElseThrow(() ->
+            new UrlNotFoundException(shortCode)
+        );
+
+    return new UrlStatsResponse(
+        url.getShortCode(),
+        url.getOriginalUrl(),
+        url.getClickCount(),
+        url.getCreatedAt(),
+        url.getExpiresAt()
+    );
+}
 }

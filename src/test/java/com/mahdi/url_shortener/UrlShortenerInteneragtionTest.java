@@ -571,4 +571,86 @@ public class UrlShortenerInteneragtionTest {
     );
 }
 
+    @Test
+    void shouldReturnUrlStatsFromPostgreSQL() throws Exception {
+
+    Url url = new Url();
+
+    url.setShortCode("statstest");
+    url.setOriginalUrl("https://example.com");
+    url.setCreatedAt(
+        OffsetDateTime.parse("2026-08-17T10:00:00Z")
+    );
+    url.setExpiresAt(null);
+    url.setClickCount(42);
+
+    urlRepository.save(url);
+
+    mockMvc.perform(
+        get("/api/v1/urls/statstest/stats")
+    )
+    .andExpect(status().isOk())
+    .andExpect(jsonPath("$.shortCode").value("statstest"))
+    .andExpect(jsonPath("$.originalUrl").value(
+        "https://example.com"
+    ))
+    .andExpect(jsonPath("$.clickCount").value(42))
+    .andExpect(jsonPath("$.createdAt").value(
+        "2026-08-17T10:00:00Z"
+    ))
+    .andExpect(jsonPath("$.expiresAt").doesNotExist());
+    }
+
+    @Test
+    void shouldReturn404WhenRequestingStatsForUnknownUrl()
+    throws Exception {
+
+    mockMvc.perform(
+        get("/api/v1/urls/doesnotexist/stats")
+    )
+    .andExpect(status().isNotFound())
+    .andExpect(jsonPath("$.status").value(404))
+    .andExpect(jsonPath("$.errorCode").value(
+        "URL_NOT_FOUND"
+    ))
+    .andExpect(jsonPath("$.message").value(
+        "Short URL not found: doesnotexist"
+    ));
+    }
+
+    @Test
+    void shouldReturnExpirationTimeInUrlStats() throws Exception {
+
+    OffsetDateTime createdAt =
+        OffsetDateTime.parse("2026-08-17T10:00:00Z");
+
+    OffsetDateTime expiresAt =
+        OffsetDateTime.parse("2026-08-18T10:00:00Z");
+
+    Url url = new Url();
+
+    url.setShortCode("expirestats");
+    url.setOriginalUrl("https://example.com");
+    url.setCreatedAt(createdAt);
+    url.setExpiresAt(expiresAt);
+    url.setClickCount(15);
+
+    urlRepository.save(url);
+
+    mockMvc.perform(
+        get("/api/v1/urls/expirestats/stats")
+    )
+    .andExpect(status().isOk())
+    .andExpect(jsonPath("$.shortCode").value("expirestats"))
+    .andExpect(jsonPath("$.originalUrl").value(
+        "https://example.com"
+    ))
+    .andExpect(jsonPath("$.clickCount").value(15))
+    .andExpect(jsonPath("$.createdAt").value(
+        "2026-08-17T10:00:00Z"
+    ))
+    .andExpect(jsonPath("$.expiresAt").value(
+        "2026-08-18T10:00:00Z"
+    ));
+    }
 }

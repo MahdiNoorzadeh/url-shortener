@@ -2,6 +2,7 @@ package com.mahdi.url_shortener.controller;
 
 import com.mahdi.url_shortener.dto.CreateUrlRequest;
 import com.mahdi.url_shortener.dto.CreateUrlResponse;
+import com.mahdi.url_shortener.dto.UrlStatsResponse;
 import com.mahdi.url_shortener.service.UrlService;
 
 import org.junit.jupiter.api.Test;
@@ -12,12 +13,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+
+import java.time.OffsetDateTime;
 
 
 @WebMvcTest(UrlController.class)
@@ -96,4 +101,39 @@ class UrlControllerTest {
     .andExpect(jsonPath("$.errorCode")
             .value("INVALID_REQUEST"));
 }
+
+        @Test
+        void shouldReturnUrlStats() throws Exception {
+
+    OffsetDateTime createdAt =
+        OffsetDateTime.parse("2026-08-17T10:00:00Z");
+
+    UrlStatsResponse response =
+        new UrlStatsResponse(
+            "abc123",
+            "https://example.com",
+            42,
+            createdAt,
+            null
+        );
+
+    when(urlService.getUrlStats("abc123"))
+        .thenReturn(response);
+
+    mockMvc.perform(
+        get("/api/v1/urls/abc123/stats")
+    )
+    .andExpect(status().isOk())
+    .andExpect(jsonPath("$.shortCode").value("abc123"))
+    .andExpect(jsonPath("$.originalUrl").value(
+        "https://example.com"
+    ))
+    .andExpect(jsonPath("$.clickCount").value(42))
+    .andExpect(jsonPath("$.createdAt").value(
+        "2026-08-17T10:00:00Z"
+    ))
+    .andExpect(jsonPath("$.expiresAt").doesNotExist());
+
+    verify(urlService).getUrlStats("abc123");
+        }
 }
