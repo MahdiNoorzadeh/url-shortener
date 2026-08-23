@@ -317,8 +317,12 @@ public class UrlShortenerInteneragtionTest {
     void shouldSaveExpirationTimeToPostgreSQL() throws Exception {
 
         OffsetDateTime expiresAt =
-            OffsetDateTime.now().plusDays(1);
+        OffsetDateTime.now()
+                .plusDays(1);
 
+        expiresAt = expiresAt.withNano(
+        (expiresAt.getNano() / 1000) * 1000
+        );
     String response = mockMvc.perform(
             post("/api/v1/urls")
                     .contentType(APPLICATION_JSON)
@@ -342,10 +346,12 @@ public class UrlShortenerInteneragtionTest {
     Url url = urlRepository.findByShortCode(shortCode)
             .orElseThrow();
 
-    assertTrue(
-    expiresAt.isEqual(url.getExpiresAt())
-);
 
+        System.out.println("Expected expiresAt: " + expiresAt);
+        System.out.println("Actual expiresAt:   " + url.getExpiresAt());
+        assertTrue(
+        expiresAt.isEqual(url.getExpiresAt())
+        );
 }
 
         @Test
