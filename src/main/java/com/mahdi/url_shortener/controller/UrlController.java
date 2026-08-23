@@ -1,5 +1,7 @@
 package com.mahdi.url_shortener.controller;
 
+import com.mahdi.url_shortener.exception.ErrorResponse;
+
 import com.mahdi.url_shortener.dto.CreateUrlRequest;
 import com.mahdi.url_shortener.dto.CreateUrlResponse;
 import com.mahdi.url_shortener.dto.UrlStatsResponse;
@@ -8,7 +10,8 @@ import com.mahdi.url_shortener.service.UrlService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 
 
@@ -34,11 +37,15 @@ public class UrlController {
                 responseCode = "201",
                 description = "Short URL created successfully"
         ),
-        @ApiResponse(
-                responseCode = "400",
-                description = "Invalid URL"
+  @ApiResponse(
+        responseCode = "400",
+        description = "Invalid request, validation error, or invalid expiration time",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = ErrorResponse.class)
         )
-    })
+    )
+})
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CreateUrlResponse createUrl(
@@ -57,8 +64,12 @@ public class UrlController {
         description = "URL statistics retrieved successfully"
     ),
     @ApiResponse(
-        responseCode = "404",
-        description = "Short URL not found"
+    responseCode = "404",
+    description = "Short URL not found",
+    content = @Content(
+        mediaType = "application/json",
+        schema = @Schema(implementation = ErrorResponse.class)
+    )
     )
     })
     @GetMapping("/{shortCode}/stats")
