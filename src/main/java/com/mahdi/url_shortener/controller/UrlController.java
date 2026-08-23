@@ -8,6 +8,7 @@ import com.mahdi.url_shortener.service.UrlService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import jakarta.validation.Valid;
 
@@ -47,6 +48,20 @@ public class UrlController {
         return urlService.createShortUrl(request);
     }
 
+    @Operation(
+    summary = "Get URL statistics",
+    description = "Returns statistics for a shortened URL."
+    )
+    @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "URL statistics retrieved successfully"
+    ),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Short URL not found"
+    )
+    })
     @GetMapping("/{shortCode}/stats")
     public UrlStatsResponse getUrlStats(
     @PathVariable String shortCode
