@@ -729,4 +729,82 @@ public class UrlShortenerInteneragtionTest {
     .andExpect(jsonPath("$.shortUrl").exists())
     .andExpect(jsonPath("$.expiresAt").doesNotExist());
     }
+
+    @Test
+    void shouldReturnUpdatedClickCountInStatsAfterRedirects()
+        throws Exception {
+
+    String response = mockMvc.perform(
+            post("/api/v1/urls")
+                    .contentType(APPLICATION_JSON)
+                    .content("""
+                            {
+                                "url": "https://example.com"
+                            }
+                            """)
+    )
+    .andExpect(status().isCreated())
+    .andReturn()
+    .getResponse()
+    .getContentAsString();
+
+    String shortCode = new tools.jackson.databind.ObjectMapper()
+            .readTree(response)
+            .get("shortCode")
+            .asString();
+
+    mockMvc.perform(
+            get("/" + shortCode)
+    )
+    .andExpect(status().isFound());
+
+    mockMvc.perform(
+            get("/" + shortCode)
+    )
+    .andExpect(status().isFound());
+
+    mockMvc.perform(
+            get("/api/v1/urls/" + shortCode + "/stats")
+    )
+    .andExpect(status().isOk())
+    .andExpect(jsonPath("$.shortCode").value(shortCode))
+    .andExpect(jsonPath("$.clickCount").value(2));
+    }
+
+    @Test
+    void shouldIncrementClickCountWhenRedirectUsesRedisCache()
+        throws Exception {
+
+    Url url = new Url();
+
+    url.setShortCode("cachedclick");
+    url.setOriginalUrl("https://example.com");
+    url.setCreatedAt(OffsetDateTime.now());
+    url.setClickCount(0);
+
+    urlRepository.save(url);
+
+    redisTemplate.opsForValue().set(
+            "url:cachedclick",
+            "https://example.com"
+    );
+
+    mockMvc.perform(
+            get("/cachedclick")
+    )
+    .andExpect(status().isFound())
+    .andExpect(header().string(
+            "Location",
+            "https://example.com"
+    ));
+
+    Url updatedUrl =
+            urlRepository.findByShortCode("cachedclick")
+                    .orElseThrow();
+
+    assertEquals(
+            1,
+            updatedUrl.getClickCount()
+    );
+    }
 }
