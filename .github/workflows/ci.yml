@@ -22,6 +22,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+
       - name: Start infrastructure
         run: docker compose up -d postgres redis
 
@@ -33,3 +34,7 @@ jobs:
 
       - name: Build application
         run: ./gradlew build
+
+      - name: Stop infrastructure
+        if: always()
+        run: docker compose down
