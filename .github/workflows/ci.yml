@@ -24,7 +24,7 @@ jobs:
           java-version: '25'
 
       - name: Start infrastructure
-        run: docker compose up -d postgres redis
+        run: docker compose up -d --wait postgres redis
 
       - name: Make Gradle executable
         run: chmod +x gradlew
