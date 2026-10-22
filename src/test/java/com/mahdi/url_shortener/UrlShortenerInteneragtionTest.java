@@ -47,17 +47,19 @@ public class UrlShortenerInteneragtionTest {
     @Autowired
     private RedisUrlCache redisUrlCache;
 
-    @Container
+        @Container
+    @SuppressWarnings("resource")
     static PostgreSQLContainer postgres =
-        new PostgreSQLContainer("postgres:17")
-                .withDatabaseName("url_shortener")
-                .withUsername("url_shortener")
-                .withPassword("url_shortener");
+            new PostgreSQLContainer("postgres:17")
+                    .withDatabaseName("url_shortener")
+                    .withUsername("url_shortener")
+                    .withPassword("url_shortener");
 
     @Container
-    static GenericContainer redis =
-        new GenericContainer("redis:7-alpine")
-                .withExposedPorts(6379);
+    @SuppressWarnings("resource")
+    static GenericContainer<?> redis =
+            new GenericContainer<>("redis:7-alpine")
+                    .withExposedPorts(6379);
                 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
