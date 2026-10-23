@@ -41,6 +41,61 @@ function App() {
     }
   }, [links, storageWarning]) // preserve unreadable data instead of overwriting it
 
+  
+useEffect(() => {
+  let cancelled = false
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+  async function loadAllStats() {
+    try {
+      const results = await Promise.all(
+        links.map(async (link) => {
+          try {
+            const result = await getUrlStats(link.shortCode)
+            return { shortCode: link.shortCode, result }
+          } catch {
+            // Keep existing statistics if one request fails.
+            return null
+          }
+        })
+      )
+
+      if (cancelled) return
+
+      setStats((current) => {
+        const next = { ...current }
+
+        for (const item of results) {
+          if (item) {
+            next[item.shortCode] = item.result
+          }
+        }
+
+        return next
+      })
+    } finally {
+      if (!cancelled) {
+        timeoutId = setTimeout(() => {
+          void loadAllStats()
+        }, 5_000)
+      }
+    }
+  }
+
+  if (links.length > 0) {
+    void loadAllStats()
+  }
+
+  return () => {
+    cancelled = true
+
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId)
+    }
+  }
+}, [links])
+
+
   const filtered = links.filter((link) => {
     const q = search.toLowerCase()
     const matchesSearch = !q || `${link.displayName} ${link.originalUrl} ${link.shortUrl}`.toLowerCase().includes(q)
@@ -148,6 +203,15 @@ function App() {
 
         {storageWarning && <div className="inline-alert warning" role="alert"><ShieldCheck size={18}/><span>{storageWarning}</span></div>}
 
+        <div className="inline-alert warning" role="status">
+        <Activity size={18} />
+        <span>
+          This demo runs on free-tier hosting. If the backend has been idle,
+          the first request may take longer while the server wakes up.
+          Subsequent requests should be faster.
+        </span>
+      </div>
+
         <section className="stats-grid" aria-label="Dashboard summary">
           <div className="metric-card"><div className="metric-top"><span>Total links</span><span className="metric-icon blue"><Link2 size={18}/></span></div><div className="metric-number">{links.length.toLocaleString()}</div><div className="metric-foot"><span className="metric-note">Saved in this browser</span></div></div>
           <div className="metric-card"><div className="metric-top"><span>Active links</span><span className="metric-icon green"><ArrowUpRight size={18}/></span></div><div className="metric-number">{activeCount.toLocaleString()}</div><div className="metric-foot"><span className="status-dot green-dot"/>Not expired</div></div>
@@ -161,7 +225,11 @@ function App() {
             <div className="url-input-wrap"><Link2 size={18}/><input id="long-url" type="url" placeholder="https://your-long-link.com/article" value={url} onChange={(e) => { setUrl(e.target.value); if (formError) setFormError(''); setCanRetry(false) }} disabled={busy} aria-describedby={formError ? 'form-error' : undefined}/><button className="primary-button" type="submit" disabled={busy}>{busy ? <><LoaderCircle className="spin" size={17}/> Creating…</> : <><Plus size={17}/> Create short link</>}</button></div>
             <div className="form-bottom"><div className="expiry-field"><label htmlFor="expiry">Expiration <span>(optional)</span></label><input id="expiry" type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} disabled={busy}/></div><div className="form-hint"><ShieldCheck size={15}/> Your links are stored on the server; dashboard names stay local.</div></div>
             {formError && <div className="form-error" id="form-error" role="alert"><X size={16}/><span>{formError}</span>{canRetry && <button className="retry-button" type="button" onClick={() => (document.getElementById('create-form') as HTMLFormElement | null)?.requestSubmit()}>Retry</button>}</div>}
-            {busy && <div className="request-status" role="status" aria-live="polite"><LoaderCircle size={16} className="spin"/><span>{slow ? 'This is taking a little longer. The service may be waking up after being idle.' : 'Contacting the service… this can take a moment on the first request.'}</span></div>}
+            {busy && <div className="request-status" role="status" aria-live="polite"><LoaderCircle size={16} className="spin"/><span>{
+              slow 
+              ? 'The backend may be waking up after being idle on free-tier hosting. Please wait…'
+               : 'Contacting the backend. The first request may take longer because the free-tier service may be waking up.'
+              }</span></div>}
           </form>
         </section>
 
