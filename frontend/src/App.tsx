@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, ArrowDownRight, ArrowUpRight, Check, Clipboard, Clock3, ExternalLink, FileDown, FileUp, Link2, LoaderCircle, MoreHorizontal, MousePointer2, Plus, Search, ShieldCheck, Trash2, X } from 'lucide-react'
 import { ApiError, createShortUrl, getApiBaseUrl, getUrlStats, type UrlStats } from './lib/api'
 import { exportDashboard, importDashboard, readDashboard, writeDashboard, type SavedLink } from './lib/storage'
+import { startPolling } from './lib/polling'
 
 type Notice = { id: number; type: 'success' | 'warning' | 'error'; message: string }
 
@@ -42,12 +43,11 @@ function App() {
   }, [links, storageWarning]) // preserve unreadable data instead of overwriting it
 
   
-useEffect(() => {
-  let cancelled = false
-  let timeoutId: ReturnType<typeof setTimeout> | undefined
 
-  async function loadAllStats() {
-    try {
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadAllStats() {
       const results = await Promise.all(
         links.map(async (link) => {
           try {
@@ -57,7 +57,7 @@ useEffect(() => {
             // Keep existing statistics if one request fails.
             return null
           }
-        })
+        }),
       )
 
       if (cancelled) return
@@ -73,27 +73,18 @@ useEffect(() => {
 
         return next
       })
-    } finally {
-      if (!cancelled) {
-        timeoutId = setTimeout(() => {
-          void loadAllStats()
-        }, 5_000)
-      }
     }
-  }
 
-  if (links.length > 0) {
-    void loadAllStats()
-  }
+    if (links.length === 0) return
 
-  return () => {
-    cancelled = true
+    const stopPolling = startPolling(loadAllStats, 5_000)
 
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId)
+    return () => {
+      cancelled = true
+      stopPolling()
     }
-  }
-}, [links])
+  }, [links])
+
 
 
   const filtered = links.filter((link) => {
