@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -25,6 +26,9 @@ public class UrlService {
     
     private final UrlRepository urlRepository;
     private final RedisUrlCache redisUrlCache;
+
+    @Value("${app.public-base-url:http://localhost:8080}")
+    private String publicBaseUrl;
 
     public CreateUrlResponse createShortUrl(CreateUrlRequest request) {
 
@@ -47,7 +51,7 @@ public class UrlService {
 
         return new CreateUrlResponse(
         shortCode,
-        "http://localhost:8080/" + shortCode,
+        publicBaseUrl.replaceAll("/+$", "") + "/" + shortCode,
         request.expiresAt()
         );
     }
