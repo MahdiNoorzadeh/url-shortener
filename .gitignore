@@ -31,3 +31,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+# Private local architecture notes (do not commit)
+PROJECT_STRUCTURE.local.md
+
+/frontend/node_modules/
+/frontend/dist/
