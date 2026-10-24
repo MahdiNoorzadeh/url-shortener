@@ -289,7 +289,3 @@ Vite environment variables prefixed with `VITE_` are exposed to client-side code
 - **Manual transfer:** JSON import/export allows dashboard data to be transferred manually; it does not provide synchronization.
 - **Aggregate analytics:** Statistics provide a total click count, not a per-day or per-visitor analytics breakdown.
 - **Free-tier latency:** Hosting services may sleep after inactivity, increasing initial response times.
-
-## License
-
-No license has been specified for this repository. Add a `LICENSE` file if you intend to distribute the project under a particular open-source license.
