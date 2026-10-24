@@ -1,44 +1,189 @@
-# Shortly — URL Shortener
+# Shortly — Full-Stack URL Shortener
 
-A URL-shortening service with a Spring Boot REST API and a React + TypeScript frontend. Short-link records live in PostgreSQL, Redis caches redirects, and the personal dashboard is stored locally in the current browser.
+A full-stack URL shortener built with **Java, Spring Boot, PostgreSQL, Redis, React, and TypeScript**. Create shareable short links, redirect visitors with HTTP 302, track click counts, and manage links through a responsive dashboard.
+
+**[Live Demo](https://url-shortener-frontend-five-gray.vercel.app/) · [Backend API](https://url-shortener-g8iv.onrender.com/) · [API Health](https://url-shortener-g8iv.onrender.com/actuator/health) · [GitHub Repository](https://github.com/MahdiNoorzadeh/url-shortener)**
 
 ## Features
 
-- Create short URLs with optional expiration.
-- HTTP 302 redirects, PostgreSQL persistence, Redis cache-aside, and click counts.
-- URL statistics through the existing API.
-- Responsive browser-local dashboard with display names, search, active/expired filters, copy/open, rename, and local removal.
-- Versioned dashboard storage and validated JSON import/export. Import replaces the current local dashboard after confirmation.
-- Accessible loading and notification states, including delayed feedback for a sleeping free-host backend.
-- GitHub Actions CI for backend and frontend.
+- **URL shortening:** Generate compact short codes for long URLs, with optional expiration times.
+- **HTTP redirects:** Resolve short codes to their original destinations using HTTP 302 redirects.
+- **Persistent storage:** Store URL records and click counts in PostgreSQL.
+- **Redis caching:** Cache redirect lookups using a cache-aside strategy to reduce repeated database queries.
+- **Expiration handling:** Support expiring links and Redis cache TTLs.
+- **Click statistics:** Retrieve the original URL, creation time, expiration time, and aggregate click count.
+- **Browser dashboard:** Search, filter, rename, copy, open, and locally remove saved links.
+- **Import and export:** Transfer dashboard data through validated JSON files.
+- **Resilient frontend:** Handle API errors, loading states, timeouts, and slow service startup.
+- **Automated validation:** Backend and frontend checks run through GitHub Actions.
 
-**Privacy and persistence:** The server stores shortened URL records. The dashboard's names and list are stored only in this browser's local storage. Clearing browser data or switching devices does not transfer dashboard data. Removing an item from the dashboard does not delete its server-side URL. Import/export is a manual transfer mechanism, not synchronization.
+## Live deployment
+
+| Component | Technology | Deployment |
+|---|---|---|
+| Frontend | React, TypeScript, Vite | [Vercel](https://url-shortener-frontend-five-gray.vercel.app/) |
+| Backend API | Java, Spring Boot | [Render](https://url-shortener-g8iv.onrender.com/) |
+| Relational database | PostgreSQL | Neon |
+| Cache | Redis | Upstash |
+| CI | GitHub Actions | [Workflow configuration](https://github.com/MahdiNoorzadeh/url-shortener/tree/main/.github/workflows) |
+
+The frontend communicates with the deployed backend through a configurable API base URL. PostgreSQL stores the durable URL records, while Redis accelerates redirect lookups.
+
+> **Hosting note:** The backend runs on a free hosting tier and may take longer to respond when waking from inactivity.
 
 ## Architecture
 
 ```text
-Browser (React + TypeScript + Vite)
-  ├── POST /api/v1/urls ───────────────┐
-  ├── GET  /api/v1/urls/{code}/stats ──┤
-  └── localStorage (dashboard metadata)│
-                                       ▼
-                              Spring Boot REST API
-                               ├── PostgreSQL (durable records)
-                               └── Redis (redirect cache)
+┌───────────────────────────────┐
+│ Browser                       │
+│ React + TypeScript + Vite     │
+│                               │
+│ URL form and dashboard        │
+│ Dashboard metadata:           │
+│ browser localStorage          │
+└───────────────┬───────────────┘
+                │ HTTPS / REST
+                ▼
+┌───────────────────────────────┐
+│ Spring Boot REST API          │
+│                               │
+│ Create short URLs              │
+│ Resolve redirects              │
+│ Track click counts             │
+│ Retrieve URL statistics        │
+└──────────┬───────────┬────────┘
+           │           │
+           ▼           ▼
+┌────────────────┐ ┌────────────────┐
+│ PostgreSQL     │ │ Redis          │
+│ Durable URL    │ │ Cached URL     │
+│ records        │ │ mappings       │
+└────────────────┘ └────────────────┘
 ```
 
-Detailed implementation notes and file-by-file responsibilities are maintained locally in `PROJECT_STRUCTURE.local.md`; it is intentionally excluded from version control.
+### Redirect caching flow
 
-## Prerequisites
+1. A visitor opens a short URL.
+2. The backend checks Redis for the short-code mapping.
+3. On a cache hit, the cached destination is used.
+4. On a cache miss, the backend looks up the URL record in PostgreSQL and caches the mapping when applicable.
+5. The backend returns an HTTP 302 redirect and tracks the click according to the application logic.
 
+PostgreSQL remains the durable source of URL records; Redis is used as a cache rather than the primary datastore.
+
+## Technology stack
+
+**Backend**
 - Java 25
-- Docker Desktop (for PostgreSQL, Redis, and Testcontainers)
-- Node.js 22 LTS or newer compatible with the Vite toolchain
-- npm
+- Spring Boot
+- Spring Data JPA
+- Spring Data Redis
+- PostgreSQL
+- Redis
+- Flyway database migrations
+- Gradle
+
+**Frontend**
+- React 19
+- TypeScript
+- Vite
+- Lucide React
+- Vitest
+- ESLint
+
+**Testing and infrastructure**
+- JUnit and Mockito
+- Testcontainers
+- Docker and Docker Compose
+- GitHub Actions
+- Render, Neon, Upstash, and Vercel
+
+## API reference
+
+Base URL: `https://url-shortener-g8iv.onrender.com`
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/urls` | Create a short URL |
+| `GET` | `/{shortCode}` | Redirect to the original URL |
+| `GET` | `/api/v1/urls/{shortCode}/stats` | Retrieve URL statistics |
+| `GET` | `/actuator/health` | Check backend health |
+
+### Create a short URL
+
+Request:
+
+```http
+POST /api/v1/urls
+Content-Type: application/json
+```
+
+```json
+{
+  "url": "https://example.com",
+  "expiresAt": "2030-01-01T10:00:00Z"
+}
+```
+
+The `expiresAt` field is optional.
+
+Example response:
+
+```json
+{
+  "shortCode": "f2fd9d7",
+  "shortUrl": "https://url-shortener-g8iv.onrender.com/f2fd9d7",
+  "expiresAt": null
+}
+```
+
+The response above illustrates the response shape; generated short codes and expiration values depend on the request.
+
+### Redirect
+
+```http
+GET /{shortCode}
+```
+
+A valid short code redirects to its destination with HTTP `302 Found`. Missing or expired links are handled by the backend's error handling.
+
+### Retrieve statistics
+
+```http
+GET /api/v1/urls/{shortCode}/stats
+```
+
+Example response:
+
+```json
+{
+  "shortCode": "f2fd9d7",
+  "originalUrl": "https://example.com",
+  "clickCount": 1,
+  "createdAt": "2026-10-24T12:00:00Z",
+  "expiresAt": null
+}
+```
+
+Values are illustrative. The API returns the actual record and aggregate click count.
 
 ## Run locally
 
-### 1. Start the database and cache
+### Prerequisites
+
+- Java 25
+- Node.js 22 or a compatible newer version
+- npm
+- Docker Desktop with Docker Compose
+
+### 1. Clone the repository
+
+```powershell
+git clone https://github.com/MahdiNoorzadeh/url-shortener.git
+Set-Location url-shortener
+```
+
+### 2. Start PostgreSQL and Redis
 
 From the repository root:
 
@@ -46,34 +191,43 @@ From the repository root:
 docker compose up -d postgres redis
 ```
 
-If your Compose file requires environment variables, create a local `.env` based on the configuration you already use. Never commit `.env` or credentials.
+Configure any required local environment variables using the project's existing configuration. Never commit credentials or production secrets.
 
-### 2. Start the backend
-
-In a terminal at the repository root:
+### 3. Start the backend
 
 ```powershell
 .\gradlew.bat bootRun
 ```
 
-The API defaults to `http://localhost:8080`. Swagger UI is available at `http://localhost:8080/swagger-ui/index.html`, and health at `http://localhost:8080/actuator/health`.
+The backend defaults to `http://localhost:8080`.
 
-### 3. Start the frontend
+- Health: `http://localhost:8080/actuator/health`
+- Swagger UI, if enabled: `http://localhost:8080/swagger-ui/index.html`
 
-In a second terminal:
+### 4. Configure and start the frontend
+
+Open a second terminal:
 
 ```powershell
-cd frontend
+Set-Location frontend
 Copy-Item .env.example .env.local
 npm install
 npm run dev
 ```
 
-Open the Vite URL printed in the terminal, normally `http://localhost:5173`. `VITE_API_BASE_URL` is the backend origin only, without `/api/v1/urls`. Vite environment variables are public client configuration; never put secrets in them.
+Ensure `frontend/.env.local` contains:
 
-## Validation
+```dotenv
+VITE_API_BASE_URL=http://localhost:8080
+```
 
-Backend, from the root:
+Open the local Vite address printed in the terminal, normally `http://localhost:5173`.
+
+The API base URL must be the backend origin only; do not append `/api/v1/urls`.
+
+### 5. Run validation
+
+Backend, from the repository root:
 
 ```powershell
 .\gradlew.bat clean test
@@ -83,52 +237,59 @@ Backend, from the root:
 Frontend, from `frontend/`:
 
 ```powershell
-npm install
 npm run lint
 npm test
 npm run build
 ```
 
-The backend integration tests use Testcontainers, so Docker must be available. The frontend tests cover browser dashboard storage validation and export/import behavior.
+Backend integration tests use Testcontainers and require Docker to be available.
 
-## API contract
+## Deployment configuration
 
-- `POST /api/v1/urls` — JSON body `{ "url": "https://example.com", "expiresAt": "2030-01-01T10:00:00Z" }`; `expiresAt` is optional. Returns `shortCode`, `shortUrl`, and optional `expiresAt`.
-- `GET /{shortCode}` — redirects to the destination with HTTP 302; not-found and expired links are reported by the backend's error handling.
-- `GET /api/v1/urls/{shortCode}/stats` — returns `shortCode`, `originalUrl`, `clickCount`, `createdAt`, and optional `expiresAt`.
-- `GET /actuator/health` — health check.
+### Backend — Render
 
-## Deployment readiness: Render API + Vercel frontend
+Configure the backend's environment variables using the database and cache provider connection details:
 
-No deployment is performed by this repository's CI workflow. GitHub Actions validates code; Vercel and Render GitHub integrations deploy independently according to their own settings.
+- `DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `REDIS_HOST`
+- `REDIS_PORT`
+- `REDIS_USERNAME`
+- `REDIS_PASSWORD`
+- `REDIS_SSL_ENABLED`
+- `PUBLIC_BASE_URL`
+- `CORS_ALLOWED_ORIGINS`
 
-### Render backend
+Set `PUBLIC_BASE_URL` to the public Render backend origin. Set `CORS_ALLOWED_ORIGINS` to the permitted frontend origins, including the production Vercel origin.
 
-1. Create a Render Web Service from this repository.
-2. Set the root directory to the repository root.
-3. Use the project's Dockerfile if deploying the existing container setup, or configure a Gradle/Java build with the actual project commands.
-4. Provision persistent PostgreSQL and Redis services. Do not store durable URL records in an ephemeral filesystem. Configure the service to reach those services over their provider URLs.
-5. Configure `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, and `REDIS_PORT` using the provider's connection details.
-6. Set `PUBLIC_BASE_URL` to the public backend origin, for example `https://your-api.onrender.com` (no trailing slash required).
-7. Set `CORS_ALLOWED_ORIGINS` to the exact Vercel production origin, for example `https://your-app.vercel.app`. For local development, the default is `http://localhost:5173`. Multiple origins may be comma-separated.
-8. Restrict production deploys to `main` in Render's settings. Confirm health at `/actuator/health` after deployment.
+Never commit production credentials.
 
-### Vercel frontend
+### Frontend — Vercel
 
-1. Import this GitHub repository into Vercel.
-2. Set the project Root Directory to `frontend`.
-3. Framework preset: Vite. Build command: `npm run build`; output directory: `dist`; install command: `npm install`.
-4. Add `VITE_API_BASE_URL` with the public backend origin, e.g. `https://your-api.onrender.com`. This is public configuration, not a secret.
-5. Use Vercel preview deployments for pull requests if useful. Restrict production deployments to `main`.
-6. Update Render's `CORS_ALLOWED_ORIGINS` to the actual production frontend origin. Add preview origins only if you deliberately want preview builds to call the API.
+Configure the project with:
 
-### CI and merge protection
+| Setting | Value |
+|---|---|
+| Root directory | `frontend` |
+| Framework | Vite |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Environment variable | `VITE_API_BASE_URL` |
+| Production API value | `https://url-shortener-g8iv.onrender.com` |
 
-The workflow runs on pull requests targeting `main` and pushes to `main`. It runs backend `./gradlew clean build` and frontend `npm install`, `npm run lint`, `npm test`, and `npm run build`. In GitHub repository settings, configure branch protection/rulesets for `main` and require the `Backend tests and build` and `Frontend lint, tests, and build` checks before merging if that feature is available on your plan.
+Vite environment variables prefixed with `VITE_` are exposed to client-side code and must not contain secrets.
 
-## Known limitations
+## Design decisions and limitations
 
-- Dashboard state is browser-local; no login, cross-device sync, or server-side rename/delete is implemented.
-- The backend statistics endpoint returns current aggregate click count, not per-day analytics.
-- The backend must be deployed with persistent PostgreSQL and a reachable Redis instance.
-- Free hosting may sleep. The frontend displays a delayed “service may be waking up” status and a timeout message; it never automatically retries link-creation POST requests.
+- **Cache-aside:** Redis serves cached redirect mappings; PostgreSQL stores durable URL records.
+- **Browser-local dashboard:** Saved dashboard entries and display names are stored in the current browser's local storage.
+- **No account system:** Authentication and cross-device dashboard synchronization are not implemented.
+- **Local removal:** Removing a link from the dashboard does not delete the server-side URL record.
+- **Manual transfer:** JSON import/export allows dashboard data to be transferred manually; it does not provide synchronization.
+- **Aggregate analytics:** Statistics provide a total click count, not a per-day or per-visitor analytics breakdown.
+- **Free-tier latency:** Hosting services may sleep after inactivity, increasing initial response times.
+
+## License
+
+No license has been specified for this repository. Add a `LICENSE` file if you intend to distribute the project under a particular open-source license.
