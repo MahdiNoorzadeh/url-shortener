@@ -36,3 +36,5 @@ PROJECT_STRUCTURE.local.md
 
 /frontend/node_modules/
 /frontend/dist/
+.neon
+node_modules/
